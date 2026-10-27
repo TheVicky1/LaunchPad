@@ -9,12 +9,16 @@ import {
   Bookmark,
   User,
   Compass,
-  Sparkles
+  Sparkles,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { useAuth } from '../context/AuthContext';
 
 export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   const { savedCount, totalCount } = useTracker();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -103,16 +107,54 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
       </div>
 
       {/* Philosophy Card in Footer */}
-      <div className="p-4 border-t border-slate-100">
-        <div className="bg-gradient-to-br from-indigo-50 via-slate-50 to-indigo-50/40 border border-indigo-100/80 rounded-xl p-3.5 text-xs">
-          <div className="flex items-center gap-1.5 font-semibold text-indigo-900 mb-1">
+      <div className="p-3 border-t border-slate-100">
+        <div className="bg-gradient-to-br from-indigo-50 via-slate-50 to-indigo-50/40 border border-indigo-100/80 rounded-xl p-3 text-xs mb-2.5">
+          <div className="flex items-center gap-1.5 font-semibold text-indigo-900 mb-0.5">
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>Core Philosophy</span>
           </div>
-          <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+          <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
             Discover → Prepare → Apply → Track → Grow
           </p>
         </div>
+
+        {/* Auth status action */}
+        {isAuthenticated && user ? (
+          <div className="flex items-center justify-between text-xs px-1 py-1">
+            <div className="truncate pr-2">
+              <span className="block font-semibold text-slate-800 truncate">{user.name}</span>
+              <span className="block text-[10px] text-slate-400 truncate">{user.email}</span>
+            </div>
+            <button
+              onClick={() => {
+                logout();
+                if (onCloseMobile) onCloseMobile();
+              }}
+              title="Sign Out"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <NavLink
+              to="/login"
+              onClick={() => onCloseMobile && onCloseMobile()}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Sign In</span>
+            </NavLink>
+            <NavLink
+              to="/register"
+              onClick={() => onCloseMobile && onCloseMobile()}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-2xs"
+            >
+              <span>Register</span>
+            </NavLink>
+          </div>
+        )}
       </div>
     </div>
   );
