@@ -10,6 +10,8 @@ import { OpenSourcePage } from './pages/OpenSourcePage';
 import { EventsPage } from './pages/EventsPage';
 import { TrackerPage } from './pages/TrackerPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 export const App = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -38,6 +40,8 @@ export const App = () => {
                   <Route path="/tracker" element={<TrackerPage />} />
                   <Route path="/saved" element={<Navigate to="/tracker?status=Saved" replace />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>
