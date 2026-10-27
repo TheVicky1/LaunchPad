@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { User, Mail, GraduationCap, MapPin, Code2, Sparkles, Check, Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { User, Mail, GraduationCap, MapPin, Code2, Sparkles, Check, Plus, X, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Badge } from '../components/Badge';
 
 export const ProfilePage = () => {
-  const { user, updateUserProfile } = useAuth();
+  const { user, isAuthenticated, updateUserProfile } = useAuth();
 
   const [formData, setFormData] = useState({
     name: user?.name || 'Alex Sharma',
@@ -26,6 +27,20 @@ export const ProfilePage = () => {
   );
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        educationLevel: user.educationLevel || '3rd Year B.Tech Computer Science',
+        graduationYear: user.graduationYear || 2027,
+      });
+      if (Array.isArray(user.skills) && user.skills.length > 0) setSkills(user.skills);
+      if (Array.isArray(user.interests) && user.interests.length > 0) setInterests(user.interests);
+      if (Array.isArray(user.preferredLocations) && user.preferredLocations.length > 0) setPreferredLocations(user.preferredLocations);
+    }
+  }, [user]);
 
   const handleAddSkill = (e) => {
     e.preventDefault();
@@ -87,6 +102,31 @@ export const ProfilePage = () => {
           Tailor your skills and interests to power personalized recommendations on your Launchpad Dashboard.
         </p>
       </div>
+
+      {!isAuthenticated && (
+        <div className="p-4 bg-indigo-50/70 border border-indigo-200/80 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span className="text-indigo-950 font-medium">
+              You are currently viewing in <strong>Guest Mode</strong>. Sign in or create an account to save your profile to the database.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/login"
+              className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              className="px-3 py-1.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-2xs"
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+      )}
 
       {savedSuccess && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs">
