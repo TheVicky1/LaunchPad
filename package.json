@@ -1,18 +1,14 @@
 {
   "name": "launchpad-workspace",
   "version": "1.0.0",
-  "description": "Launchpad - Unified Opportunity Discovery Platform for Students",
+  "description": "LaunchPad - Unified Opportunity Discovery Platform",
   "private": true,
+  "type": "module",
   "scripts": {
-    "install:all": "npm install && npm run install:server && npm run install:client",
-    "install:server": "cd server && npm install",
-    "install:client": "cd client && npm install",
-    "server": "cd server && npm run dev",
-    "client": "cd client && npm run dev",
-    "seed": "cd server && npm run seed",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.2"
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "preview": "cd client && npm run preview",
+    "test": "node --test tests/*.test.js",
+    "install:client": "cd client && npm install"
   }
 }
