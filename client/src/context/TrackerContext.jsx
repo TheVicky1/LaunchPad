@@ -1,78 +1,91 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const TrackerContext = createContext();
 
-const INITIAL_TRACKED = [
-  {
-    id: 'user-track-1',
-    opportunityId: 'opp-001',
-    itemType: 'Opportunity',
-    applicationStatus: 'Applied',
-    saved: true,
-    title: 'Software Engineering Intern - 2027',
-    company: 'Google',
-    category: 'Internship',
-    location: 'Bengaluru',
-    deadline: new Date(Date.now() + 25 * 86400000).toISOString(),
-    applicationUrl: 'https://careers.google.com/jobs/results/',
-    notes: 'Submitted resume and portfolio on career portal.',
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'user-track-2',
-    opportunityId: 'opp-004',
-    itemType: 'Opportunity',
-    applicationStatus: 'Preparing',
-    saved: true,
-    title: 'Software Engineer Program Analyst Intern',
-    company: 'JPMorganChase',
-    category: 'Internship',
-    location: 'Bengaluru',
-    deadline: new Date(Date.now() + 10 * 86400000).toISOString(),
-    applicationUrl: 'https://careers.jpmorgan.com/global/en/students/programs',
-    notes: 'Reviewing Java Spring Boot concepts and Leetcode questions.',
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'user-track-3',
-    opportunityId: 'evt-001',
-    itemType: 'Event',
-    applicationStatus: 'Saved',
-    saved: true,
-    title: 'HackBangalore 2027: Citywide Student Hackathon',
-    company: 'Bengaluru Tech Community & Karnataka Innovation',
-    category: 'Hackathon',
-    location: 'Bengaluru',
-    deadline: new Date(Date.now() + 7 * 86400000).toISOString(),
-    applicationUrl: 'https://unstop.com/hackathons/hackbangalore',
-    notes: 'Discussing team idea with college friends.',
-    updatedAt: new Date().toISOString()
-  }
-];
-
 export const TrackerProvider = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
   const [trackedItems, setTrackedItems] = useState(() => {
-    const cached = localStorage.getItem('launchpad_tracked_items');
-    return cached ? JSON.parse(cached) : INITIAL_TRACKED;
+    if (isAuthenticated) {
+      const cached = localStorage.getItem('launchpad_tracked_items');
+      return cached ? JSON.parse(cached) : [];
+    }
+    const cachedGuest = localStorage.getItem('launchpad_guest_tracked_items');
+    return cachedGuest ? JSON.parse(cachedGuest) : [];
   });
   const [loading, setLoading] = useState(false);
+  const prevUserRef = useRef(user?.id);
 
-  // Sync with API on mount
+  // Sync / Reconcile whenever authentication state changes
   useEffect(() => {
-    const fetchTracked = async () => {
+    const prevUserId = prevUserRef.current;
+    prevUserRef.current = user?.id;
+
+    if (!isAuthenticated || !user) {
+      // User logged out: clear private tracker data and revert to guest demo items
+      if (prevUserId) {
+        const cachedGuest = localStorage.getItem('launchpad_guest_tracked_items');
+        setTrackedItems(cachedGuest ? JSON.parse(cachedGuest) : []);
+      }
+      return;
+    }
+
+    // User is authenticated: reconcile local items with server items
+    const reconcileAndFetch = async () => {
+      setLoading(true);
       try {
-        const data = await api.getMyOpportunities();
-        if (Array.isArray(data) && data.length > 0) {
-          setTrackedItems(data);
-          localStorage.setItem('launchpad_tracked_items', JSON.stringify(data));
+        // Fetch server tracker data
+        const serverData = await api.getMyOpportunities();
+        const serverItems = Array.isArray(serverData) ? serverData : [];
+
+        // Check if there are local guest items to reconcile
+        const localGuestRaw = localStorage.getItem('launchpad_guest_tracked_items');
+        const localGuestItems = localGuestRaw ? JSON.parse(localGuestRaw) : [];
+
+        // Upload any local items that are not yet on the server
+        for (const localItem of localGuestItems) {
+          const oppId = localItem.opportunityId || localItem.id;
+          const alreadyOnServer = serverItems.some(
+            (s) => s.opportunityId === oppId || s.id === oppId
+          );
+          if (!alreadyOnServer && oppId) {
+            try {
+              await api.saveOpportunity({
+                opportunityId: oppId,
+                itemType: localItem.itemType || 'Opportunity',
+                applicationStatus: localItem.applicationStatus || 'Saved',
+                title: localItem.title,
+                company: localItem.company,
+                category: localItem.category,
+                location: localItem.location,
+                deadline: localItem.deadline,
+                applicationUrl: localItem.applicationUrl,
+                notes: localItem.notes || ''
+              });
+            } catch (err) {
+              console.warn('Reconciliation item upload skipped:', err.message);
+            }
+          }
+        }
+
+        // Fetch refreshed consolidated server data
+        const consolidated = await api.getMyOpportunities();
+        if (Array.isArray(consolidated)) {
+          setTrackedItems(consolidated);
+          localStorage.setItem('launchpad_tracked_items', JSON.stringify(consolidated));
+        } else {
+          setTrackedItems(serverItems);
         }
       } catch (err) {
-        console.warn('Backend tracking sync fallback to local storage:', err.message);
+        console.warn('Tracker sync error:', err.message);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchTracked();
-  }, []);
+
+    reconcileAndFetch();
+  }, [isAuthenticated, user?.id]);
 
   const isSaved = (opportunityId) => {
     return trackedItems.some(
@@ -95,11 +108,16 @@ export const TrackerProvider = ({ children }) => {
       // Remove from tracking
       const updated = trackedItems.filter((t) => t.opportunityId !== oppId && t.id !== oppId);
       setTrackedItems(updated);
-      localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
-      try {
-        await api.removeOpportunity(oppId);
-      } catch (e) {
-        // Local state preserved
+
+      if (isAuthenticated && api.hasToken()) {
+        localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
+        try {
+          await api.removeOpportunity(oppId);
+        } catch (e) {
+          console.warn('Backend removal failed, preserved locally:', e.message);
+        }
+      } else {
+        localStorage.setItem('launchpad_guest_tracked_items', JSON.stringify(updated));
       }
       return false;
     } else {
@@ -120,11 +138,16 @@ export const TrackerProvider = ({ children }) => {
       };
       const updated = [newItem, ...trackedItems];
       setTrackedItems(updated);
-      localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
-      try {
-        await api.saveOpportunity(newItem);
-      } catch (e) {
-        // Local state preserved
+
+      if (isAuthenticated && api.hasToken()) {
+        localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
+        try {
+          await api.saveOpportunity(newItem);
+        } catch (e) {
+          console.warn('Backend save failed, preserved locally:', e.message);
+        }
+      } else {
+        localStorage.setItem('launchpad_guest_tracked_items', JSON.stringify(updated));
       }
       return true;
     }
@@ -144,12 +167,16 @@ export const TrackerProvider = ({ children }) => {
     });
 
     setTrackedItems(updated);
-    localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
 
-    try {
-      await api.updateOpportunityStatus(opportunityId, newStatus, notes);
-    } catch (e) {
-      console.warn('API update failed, updated locally:', e.message);
+    if (isAuthenticated && api.hasToken()) {
+      localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
+      try {
+        await api.updateOpportunityStatus(opportunityId, newStatus, notes);
+      } catch (e) {
+        console.warn('API update failed, updated locally:', e.message);
+      }
+    } else {
+      localStorage.setItem('launchpad_guest_tracked_items', JSON.stringify(updated));
     }
   };
 
@@ -158,12 +185,16 @@ export const TrackerProvider = ({ children }) => {
       (item) => item.opportunityId !== opportunityId && item.id !== opportunityId
     );
     setTrackedItems(updated);
-    localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
 
-    try {
-      await api.removeOpportunity(opportunityId);
-    } catch (e) {
-      console.warn('API removal failed, removed locally:', e.message);
+    if (isAuthenticated && api.hasToken()) {
+      localStorage.setItem('launchpad_tracked_items', JSON.stringify(updated));
+      try {
+        await api.removeOpportunity(opportunityId);
+      } catch (e) {
+        console.warn('API removal failed, removed locally:', e.message);
+      }
+    } else {
+      localStorage.setItem('launchpad_guest_tracked_items', JSON.stringify(updated));
     }
   };
 
