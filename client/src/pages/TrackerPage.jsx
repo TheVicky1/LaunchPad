@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   CheckSquare,
   Bookmark,
@@ -10,9 +10,11 @@ import {
   Clock,
   Sparkles,
   FileEdit,
-  ArrowUpRight
+  ArrowUpRight,
+  LogIn
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { useAuth } from '../context/AuthContext';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 
@@ -21,6 +23,7 @@ export const TrackerPage = () => {
   const initialStatus = searchParams.get('status') || 'All';
 
   const { trackedItems, updateStatus, removeItem } = useTracker();
+  const { isAuthenticated } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState(initialStatus);
   const [editingNotesId, setEditingNotesId] = useState(null);
   const [tempNotes, setTempNotes] = useState('');
@@ -73,6 +76,31 @@ export const TrackerPage = () => {
           Manage your career applications pipeline. Change stages as you prepare, submit, and interview.
         </p>
       </div>
+
+      {!isAuthenticated && (
+        <div className="p-3.5 bg-indigo-50/60 border border-indigo-200/70 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span className="text-indigo-950 font-medium">
+              You are tracking opportunities in <strong>Guest Mode</strong> (saved in this browser). Sign in or register to persist across devices and server restarts.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/login"
+              className="px-2.5 py-1 bg-white border border-indigo-200 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              className="px-2.5 py-1 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-2xs"
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
