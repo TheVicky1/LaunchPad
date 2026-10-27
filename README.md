@@ -1,233 +1,149 @@
 # 🚀 LaunchPad
 
-> **"Your next opportunity starts here."**
-> A unified opportunity discovery platform for students to discover tech internships, open-source programs, and location-based hackathons.
+> **"Your next opportunity starts here."**  
+> An open-source, unified opportunity discovery and personal tracking platform.
 
 ---
 
 ## 🌟 Product Vision & Core Philosophy
 
-Students currently have to navigate dozens of disconnected career portals, community Discord servers, GitHub organizations, and event platforms to find opportunities. **Launchpad** solves this by consolidating all student opportunities into one unified, fast, and accessible platform.
+Today, people looking for internships, tech jobs, hackathons, open-source contribution programs, and technical events must manually search across fragmented platforms. Information is duplicated, stale, difficult to filter, and often discovered after application deadlines have expired.
 
-**Core Philosophy:**  
-`Discover` ➔ `Prepare` ➔ `Apply` ➔ `Track` ➔ `Grow`
+**LaunchPad** unifies discovery across multiple legitimate sources, normalizes opportunities into a consistent schema, provides fast deterministic search and filtering, and offers a personal application tracker with guaranteed user data privacy.
+
+**Long-Term Promise:**  
+`One platform. Multiple opportunity sources. Reliable discovery. Personal tracking.`
 
 ---
 
-## 🏛️ The Three Core Product Pillars
+## 🏛️ Core Product Pillars
 
 ### 1. 💼 Jobs & Internships
-- **Unified Listings**: Software engineering, frontend, backend, mobile, data, and devops roles from companies like Google, Microsoft, Amazon, JPMorganChase, Postman, Razorpay, Uber, and emerging startups.
-- **Rich Filtering**: Filter by keyword search, category (*Internship*, *Full-time*, *Contract*), work mode (*Remote*, *Hybrid*, *On-site*), and skill tags (*React*, *Python*, *Java*, *Go*, *Docker*, etc.).
-- **Direct Application**: Verified official application links opening directly in new tabs.
-- **Detail Modals**: In-depth view showing responsibilities, requirements, stipend, and last-verified timestamps.
+- **Unified Listings:** Software engineering, frontend, backend, product, and data opportunities from top global companies and high-growth startups.
+- **Deterministic Filtering:** Keyword search, category (*Internship*, *Full-time*, *Contract*), work mode (*Remote*, *Hybrid*, *On-site*), location, and skill tags (*React*, *Python*, *Java*, *Go*, *Docker*, etc.).
+- **Direct Application:** Canonical links to verified career portals.
+- **Detail Modals:** Complete view with role requirements, compensation/stipend, and verified timestamps.
 
-### 2. 🌐 Open Source & Contribution Programs
-- **Structured Programs**: Google Summer of Code (GSoC), LFX Mentorship, GirlScript Summer of Code (GSSoC), Outreachy, GitHub Octernships, and Hacktoberfest.
-- **Curated Repositories**: High-impact open source repositories with curated beginner-friendly tags (*good first issue*).
-- **Interactive 6-Step Guide**: Embedded "Getting Started with Open Source" roadmap breaking down repo selection, reading READMEs, finding issues, forking, branching, and opening pull requests.
+### 2. 🌐 Open Source & Mentorship Programs
+- **Structured Initiatives:** Google Summer of Code (GSoC), LFX Mentorship, Outreachy, and open source fellowship programs.
+- **Beginner-Friendly Discovery:** Direct access to repositories welcoming first-time contributors.
+- **Interactive Roadmap:** Embedded 6-step guide covering issue discovery, git workflows, forking, and pull request etiquette.
 
 ### 3. 🎪 Location-Based Events & Hackathons
-- **City-Specific Discovery**: Real location-based querying across **Bengaluru** (default), **Hyderabad**, **Mumbai**, **Delhi**, **Pune**, and **Remote / Online**.
-- **Diverse Formats**: Hackathons, GDG DevFests, AWS Community Days, technical workshops, and developer meetups.
-- **Calendar-style Badges**: Clear event dates, venue details, and registration links.
+- **City-Specific Discovery:** Dedicated location querying across Bengaluru, Hyderabad, Mumbai, Delhi, Pune, and Remote.
+- **Diverse Formats:** College hackathons, technical conferences, hands-on workshops, and community meetups.
+- **Schedule Awareness:** Direct registration links and deadline calendars.
 
 ---
 
 ## 📋 Personal Opportunity Tracker
 
-- **Multi-Stage Pipeline**: Track applications across 6 stages:
-  - `Saved`
-  - `Preparing`
-  - `Applied`
-  - `Interviewing`
-  - `Completed`
-  - `Rejected`
-- **Dual-Layer Persistence**: State is automatically synchronized with the backend REST API and persisted in browser `localStorage`, ensuring data survives reloads and operates even in offline mode.
-- **Personal Notes**: Record interview dates, referral names, or portfolio submission links directly on any tracked item.
+- **Multi-Stage Pipeline:** Track progress across `SAVED`, `PLANNING_TO_APPLY`, `APPLIED`, `INTERVIEWING`, `OFFERED`, `REJECTED`, `WITHDRAWN`, and `COMPLETED`.
+- **Database Row Level Security (RLS):** Private notes and application statuses are protected directly in PostgreSQL (`auth.uid() = user_id`). No user can access or mutate another student's tracker data.
+- **Session Restoration:** Synchronized across devices via Supabase Auth.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**:
-  - React 18
-  - Vite 6
+- **Frontend:**
+  - React 18 & Vite 6
   - Tailwind CSS 3
-  - Lucide React (feather-style minimalist icons)
+  - Lucide React minimalist icons
   - React Router DOM 6
-  - Fetch API
-- **Backend**:
-  - Node.js (v20+)
-  - Express.js
-  - RESTful API design with CORS & Centralized Error Handler
-- **Database & Persistence**:
-  - MongoDB & Mongoose schemas with compound indexes
-  - Graceful In-Memory & Seed Dataset Fallback (ensures 100% functionality even when MongoDB is offline)
+  - `@supabase/supabase-js` client
+- **Database & Identity (Primary Platform):**
+  - **Supabase PostgreSQL 15+** with relational foreign keys, check constraints, and compound indexes
+  - **Supabase Auth** with email/password authentication, session management, and Google OAuth
+  - **Row Level Security (RLS)** enforcing tenant isolation directly at the database engine level
+  - **PostgreSQL Full-Text Search (FTS)** via GIN indexing and `tsvector`
+- **Background Ingestion Worker (Scheduled):**
+  - Decoupled background service running isolated `SourceAdapter` implementations
+  - Deterministic deduplication (canonical URL, source external ID, title/company matching)
+  - Telemetry and health tracking recorded in `ingestion_runs`
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```text
 LaunchPad/
-├── client/                      # Frontend React + Vite application
+├── client/                      # Frontend React + Vite SPA (migrating to Next.js in Phase 3)
 │   ├── src/
-│   │   ├── components/          # Reusable UI components (Cards, Modals, Badges, etc.)
-│   │   ├── context/             # AuthContext & TrackerContext
-│   │   ├── pages/               # Dashboard, Jobs, Open Source, Events, Tracker, Profile
-│   │   ├── services/            # API client service layer
-│   │   ├── App.jsx              # Main router & layout shell
-│   │   ├── index.css            # Tailwind directives & styles
-│   │   └── main.jsx             # React DOM entry
-│   ├── index.html
+│   │   ├── components/          # Reusable UI components (Cards, Modals, Badges, Nav)
+│   │   ├── context/             # AuthContext (Supabase Auth) & TrackerContext
+│   │   ├── lib/                 # Supabase client initialization & validation
+│   │   ├── pages/               # Dashboard, Jobs, Open Source, Events, Tracker, Profile, Auth
+│   │   ├── services/            # Supabase data services (Opportunities, Tracking, Profile)
+│   │   ├── App.jsx              # Main router & application layout
+│   │   └── main.jsx             # React entry point
 │   ├── package.json
 │   ├── tailwind.config.js
 │   └── vite.config.js
-├── server/                      # Backend Node.js + Express API
-│   ├── src/
-│   │   ├── config/              # Database connection & status
-│   │   ├── controllers/         # Express controllers (Opportunities, Events, OSS, User, Auth)
-│   │   ├── middleware/          # Centralized error handler & Auth middleware
-│   │   ├── models/              # Mongoose models (Opportunity, Event, OSS, User, Tracker)
-│   │   ├── routes/              # Express API route modules
-│   │   ├── seed/                # Curated seed datasets & seed runner
-│   │   ├── services/            # StoreService (Unified MongoDB & in-memory data store)
-│   │   └── app.js               # Express application setup
-│   ├── package.json
-│   └── server.js                # Server entry point (port 5000)
-├── .env.example
-├── .gitignore
-├── package.json                 # Monorepo orchestration scripts
-└── README.md
+├── supabase/                    # Supabase database configuration & migrations
+│   ├── config.toml              # Local Supabase CLI configuration
+│   ├── migrations/              # Version-controlled SQL migrations (single source of truth)
+│   └── seed.sql                 # Deterministic local seed data
+├── docs/
+│   ├── architecture/            # System overview & ingestion architecture
+│   └── decisions/               # Architecture Decision Records (ADRs)
+├── CONTRIBUTING.md              # Contributor guide & source adapter specifications
+├── SECURITY.md                  # Security policies & vulnerability disclosure
+├── .env.example                 # Sanitized environment variable placeholders
+└── package.json                 # Workspace scripts
 ```
 
 ---
 
-## 🚀 Quickstart & Setup Guide
+## 🚀 Getting Started
 
 ### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v18.0.0 or later)
-- [npm](https://www.npmjs.com/) (v9.0.0 or later)
-- (Optional) Local MongoDB or MongoDB Atlas URI
+- **Node.js** (v20.x or higher)
+- **npm** (v10.x or higher)
+- **Docker Desktop** (optional, for local Supabase CLI execution)
 
-### 2. Installation
-Clone the repository and install all dependencies:
-
+### 2. Environment Setup
+Copy the environment example file and configure your Supabase project credentials:
 ```bash
-# Clone repository
-git clone https://github.com/TheVicky1/LaunchPad.git
-cd LaunchPad
-
-# Install root, backend, and frontend dependencies
-npm run install:all
-```
-
-Alternatively, install individually:
-```bash
-cd server && npm install
-cd ../client && npm install
-```
-
-### 3. Environment Configuration
-Copy `.env.example` to `.env` in the `server/` directory:
-
-```bash
-# In server directory
 cp .env.example .env
 ```
 
-Default variables:
+Edit `.env` with your Supabase credentials:
 ```env
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/launchpad
-CLIENT_URL=http://localhost:5173
-JWT_SECRET=launchpad_super_secure_jwt_secret_key_2026
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-public-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
-> **Note**: If `MONGODB_URI` is left unconfigured or MongoDB is not running locally, the server will automatically activate the **curated in-memory fallback dataset** with zero crashes and full API capabilities.
-
-### 4. Running the Application
-
-You can start both frontend and backend concurrently from the root directory:
-
+### 3. Local Supabase Setup (Optional with Supabase CLI)
+To run Supabase locally with Docker:
 ```bash
+# Start local PostgreSQL, Auth, and Studio
+npx supabase start
+
+# Apply declarative schema migrations and seed data
+npx supabase db reset
+```
+
+### 4. Running the Web Application
+```bash
+# Install dependencies
+npm run install:client
+
+# Start Vite development server
 npm run dev
 ```
 
-Or run them in separate terminals:
+Visit `http://localhost:5173` to explore LaunchPad.
 
+### 5. Running Build Checks
 ```bash
-# Terminal 1 - Backend API (runs on port 5000)
-npm run server
-
-# Terminal 2 - Frontend Client (runs on port 5173)
-npm run client
-```
-
-Open your browser at: **`http://localhost:5173`**
-
-### 5. Seeding MongoDB (Optional)
-If you have a live MongoDB instance and want to populate it with the 45+ seed records:
-
-```bash
-npm run seed
+# Build production client bundle
+npm run build
 ```
 
 ---
 
-## 📡 API Reference Endpoints
+## 📄 License & Open-Source Standards
 
-### System Health
-- `GET /api/health` — Returns server health status and active database mode (`mongodb` vs `in-memory-demo`).
-
-### Opportunities (Jobs & Internships)
-- `GET /api/opportunities` — Query opportunities with filters:
-  - `search` (keyword search across title, company, description, skills)
-  - `category` (`Internship`, `Full-time`, `Contract`)
-  - `location` (e.g. `Bengaluru`, `Hyderabad`, `Remote`)
-  - `mode` (`Remote`, `Hybrid`, `On-site`)
-  - `skills` (comma-separated skills)
-  - `sort` (`newest`, `deadline`, `company`)
-  - `page`, `limit` (pagination)
-- `GET /api/opportunities/featured` — Top 4 highlighted opportunities.
-- `GET /api/opportunities/:id` — Details of a specific opportunity.
-
-### Events & Hackathons
-- `GET /api/events` — Query events with filters:
-  - `city` (`Bengaluru`, `Hyderabad`, `Mumbai`, `Delhi`, `Pune`, `Remote`)
-  - `category` (`Hackathon`, `Conference`, `Workshop`, `Meetup`)
-  - `mode` (`Offline`, `Online`, `Hybrid`)
-  - `search` (keyword search across title, organizer, tags)
-  - `sort` (`date`, `newest`)
-- `GET /api/events/:id` — Specific event details.
-
-### Open Source Programs
-- `GET /api/open-source` — Query programs with filters:
-  - `technology` (e.g. `Python`, `JavaScript`, `Go`, `Rust`)
-  - `difficulty` (`Beginner`, `Intermediate`, `Advanced`)
-  - `beginnerFriendly` (`true` / `false`)
-  - `programStatus` (`Open`, `Upcoming`)
-- `GET /api/open-source/:id` — Specific program details.
-
-### User Opportunity Tracking
-- `GET /api/me/opportunities` — Fetch tracked opportunities for current user.
-- `POST /api/me/opportunities` — Save/bookmark an opportunity.
-- `PATCH /api/me/opportunities/:id` — Update application status (`Preparing`, `Applied`, etc.) or notes.
-- `DELETE /api/me/opportunities/:id` — Remove an item from tracking.
-
-### User Profile
-- `GET /api/auth/profile` — Fetch student profile.
-- `PUT /api/auth/profile` — Update skills, interests, and graduation year.
-
----
-
-## 🧪 Testing & Verification
-
-All 5 core user flows were tested and verified via automated end-to-end browser walkthrough:
-1. **Flow A (Find Internship)**: Searched `software`, filtered by `Internship`, verified cards, opened detail modal, verified external links.
-2. **Flow B (Discover Open Source)**: Explored programs, interacted with the 6-step roadmap, filtered by `Beginner Friendly Only`.
-3. **Flow C (Discover Local Events)**: Tested real city filtering across `Bengaluru` and `Hyderabad`, verified hackathons.
-4. **Flow D (Track Opportunity)**: Saved items, changed stage to `Interviewing`, added notes, refreshed browser, and verified persistent state.
-5. **Flow E (Empty Search)**: Searched nonexistent terms, verified custom `EmptyState` component, clicked `Clear All Filters` and restored list.
+LaunchPad is licensed under the MIT License. Contributions following our architectural charter and security guidelines are warmly welcomed! See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
